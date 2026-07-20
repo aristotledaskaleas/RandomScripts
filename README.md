@@ -1,5 +1,5 @@
 This is a basic repository that I will likely not be updating frequently, but contain some scripts that I think some people might find useful.
-
+I am now in college, so I may be adding more stuff here in the coming years... they may be somewhat useful or just fun, their sole purpose would be to expand and/or reinforce my knowledge and acumen in computer programming.
 
 All software offered in this repository are subject to the GNU General Public License which can be referenced in the LICENSE file found in the root of the repo.
 
