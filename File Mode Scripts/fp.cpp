@@ -36,8 +36,11 @@ void modifyPermissions(const fs::path &filePath);
 std::vector<fs::path> parseArguments(int argc, char *argv[]);
 
 std::unordered_map<std::string, std::function<void()>> flagActions = {
+    // define short and long flag options, execute lambda if parsed flag is a match
     {"v", []() { verbose = true; }},
     {"verbose", []() { verbose = true; }},
+
+    // if passed, give full permissions to UGO instead of just U (or permission group respective to caller)
     {"a", []() { switchMode = true; }},
     {"all-groups", []() { switchMode = true; }}
 };
