@@ -58,13 +58,14 @@ Changelog (since v10):
     -> Updated copyright year
     -> Fixed potential undefined behavior exposed with -Wall flag
     -> Fixed metadata function for true linux support
+    -> Updated OpenSSL flag from default disabled (OPENSSL_FOUND) to default enabled (NO_OPENSSL)
 To-do:
     -> Nothing.
 
-Current full compilation flags: -std=c++20 -DOPENSSL_FOUND -L/path/to/openssl/lib -I/path/to/openssl/include -lssl -lcrypto
+Current full compilation flags: -std=c++20 -L/path/to/openssl/lib -I/path/to/openssl/include -lssl -lcrypto
 */
-const char VERSION[]{"10.7d"}; // Define program version for later use
-const char CW_YEAR[]{"2025"}; // Define copyright year for later use
+const char VERSION[]{"10.7e"}; // Define program version for later use
+const char CW_YEAR[]{"2026"}; // Define copyright year for later use
 
 #include <iostream>       // For console logging
 #include <fstream>        // For file operations (reading/writing)
@@ -109,12 +110,12 @@ const char CW_YEAR[]{"2025"}; // Define copyright year for later use
 #include <fcntl.h>        // For secure random data generation from urandom
 #endif
 
-#ifdef OPENSSL_FOUND
+#ifndef NO_OPENSSL
 #include <openssl/evp.h>  // For hashing
 #include <openssl/rand.h> // For secure random data generation
-const bool isOpenSSL{true}; // Boolean to determine if OpenSSL is found
+const bool isOpenSSL{true}; // Boolean to determine if OpenSSL is enabled
 #else
-const bool isOpenSSL{false}; // Boolean to determine if OpenSSL is found
+const bool isOpenSSL{false}; // Boolean to determine if OpenSSL is enabled
 #endif
 
 namespace fs = std::filesystem; // Makes linking commands from the 'std::filesystem' easier
@@ -242,7 +243,7 @@ public:
     }
 };
 
-#ifndef OPENSSL_FOUND
+#ifdef NO_OPENSSL
 class randomizer {
 private:
     std::random_device rd;
@@ -270,7 +271,7 @@ public:
     }
 };
 #endif
-#ifdef OPENSSL_FOUND
+#ifndef NO_OPENSSL
 class secureRandomizer {
 private:
     std::chrono::steady_clock::time_point lastSeedTime;
@@ -318,7 +319,7 @@ enum logLevel { // Define valid log levels
 };
 
 // Prototype declarations for refactoring
-#ifdef OPENSSL_FOUND // Only declares these prototypes if compiling with OpenSSL (since it would be required)
+#ifndef NO_OPENSSL // Only declares these prototypes if compiling with OpenSSL (since it would be required)
     int verifyWithHash(const std::string& filePath, const std::vector<unsigned char>& expectedData, const int& pass);
     std::string computeSHA256(const std::vector<unsigned char>& data);
     struct hashStat {
@@ -718,7 +719,7 @@ void cleanupMetadata(std::string& filePath) {
 #endif
 }
 
-#ifdef OPENSSL_FOUND
+#ifndef NO_OPENSSL
     std::string computeSHA256(const std::vector<unsigned char>& data) { // Gets SHA256 hash
         EVP_MD_CTX *mdctx{EVP_MD_CTX_new()}; // Initializes context
         const EVP_MD *md{EVP_sha256()}; // Sets mode to SHA256
@@ -933,7 +934,7 @@ bool shredFile(const fs::path& filePath) {
 
 int overwriteWithRandomData(std::string filePath, std::fstream& file, std::uintmax_t fileSize, int pass) {
     secureRandom rng;
-#ifndef OPENSSL_FOUND
+#ifdef NO_OPENSSL
     randomizer seed;
 #else
     secureRandomizer srng;
@@ -942,7 +943,7 @@ int overwriteWithRandomData(std::string filePath, std::fstream& file, std::uintm
     std::vector<char> buffer(bufferSize); // Set buffer to retrieved value (block size)
     ic.updateFailedUrandomStatus(false); // Reset failed to print data warning for next pass (or file)
 
-    // Patterns for DoD compliance and additional security
+    // Patterns for DoW compliance and additional security
     std::vector<std::string> patterns{
         std::string(bufferSize, '\x00'),  // Pass of 0x00 (00000000 in binary)
         std::string(bufferSize, '\xFF'),  // Pass of 0xFF (11111111 in binary)
@@ -957,8 +958,8 @@ int overwriteWithRandomData(std::string filePath, std::fstream& file, std::uintm
     int securePasses(patterns.size());  // Number of secure passes (to change add/remove from patterns array)
     
     std::vector<unsigned char> lastRandomData(fileSize); // For verification
-#ifndef OPENSSL_FOUND
-        // Secure random generator
+#ifdef NO_OPENSSL
+        // Secure random generator (alternative without OpenSSL)
         auto& gen = seed.getGenerator(); // Checks if the generator is ready to be reseeded, if so reseed
         auto& rd = seed.getDevice(); // Gets the random device
         std::uniform_int_distribution<> dist(0, 255); // Sets even distribution for data generation
@@ -975,7 +976,7 @@ int overwriteWithRandomData(std::string filePath, std::fstream& file, std::uintm
                     logMessage(WARNING, std::string(e.what()));
                     ic.updateFailedUrandomStatus(true);
                 }
-#ifndef OPENSSL_FOUND
+#ifdef NO_OPENSSL
                 randomData.resize(writeSize);
                 std::generate(randomData.begin(), randomData.end(), [&](){ return static_cast<char>(dist(gen)); });
 #else
@@ -983,7 +984,7 @@ int overwriteWithRandomData(std::string filePath, std::fstream& file, std::uintm
 #endif                
             } catch (...) {
                 logMessage(ERROR, "An unknown error occurred when generating secure random data");
-#ifndef OPENSSL_FOUND
+#ifdef NO_OPENSSL
                 randomData.resize(writeSize);
                 std::generate(randomData.begin(), randomData.end(), [&](){ return static_cast<char>(dist(gen)); });
 #else
@@ -995,7 +996,7 @@ int overwriteWithRandomData(std::string filePath, std::fstream& file, std::uintm
             if (Config.isVerify()) { std::copy(randomData.begin(), randomData.end(), lastRandomData.begin() + offset); } // Copies the verification
         } else {
             std::vector<unsigned char> randomData;
-            // Secure shredding mode with multiple patterns (defined and random, plus DoD standards)
+            // Secure shredding mode with multiple patterns (defined and random, plus DoW standards)
             for (int pass = 0; pass < securePasses; ++pass) {                             
                 // Apply a pre-set pattern
                 std::memcpy(buffer.data(), patterns[pass].data(), bufferSize); // Copy pattern (number 'pass') to buffer9
@@ -1011,7 +1012,7 @@ int overwriteWithRandomData(std::string filePath, std::fstream& file, std::uintm
                             logMessage(WARNING, std::string(e.what()));
                             ic.updateFailedUrandomStatus(true);
                         }
-#ifndef OPENSSL_FOUND
+#ifdef NO_OPENSSL
                         gen.seed(rd() + pass + offset); // Re-seed with the pass and offset
                         randomData.resize(writeSize);
                         std::generate(randomData.begin(), randomData.end(), [&](){ return static_cast<char>(dist(gen)); });
@@ -1020,7 +1021,7 @@ int overwriteWithRandomData(std::string filePath, std::fstream& file, std::uintm
 #endif 
                     } catch (...) {
                         logMessage(ERROR, "An unknown error occurred when generating secure random data");
-#ifndef OPENSSL_FOUND
+#ifdef NO_OPENSSL
                         gen.seed(rd() + pass + offset); // Re-seed with the pass and offset
                         randomData.resize(writeSize);
                         std::generate(randomData.begin(), randomData.end(), [&](){ return static_cast<char>(dist(gen)); });
@@ -1033,7 +1034,7 @@ int overwriteWithRandomData(std::string filePath, std::fstream& file, std::uintm
                 }
             }
 
-            // DoD-required passes
+            // DoW-required passes
             // Pass 1: Overwrite with 0x00
             std::fill(buffer.begin(), buffer.end(), '\x00'); // Fills buffer
             file.seekp(offset); // Moves to offset
@@ -1052,7 +1053,7 @@ int overwriteWithRandomData(std::string filePath, std::fstream& file, std::uintm
                     logMessage(WARNING, std::string(e.what()));
                     ic.updateFailedUrandomStatus(true);
                 }
-#ifndef OPENSSL_FOUND
+#ifdef NO_OPENSSL
                 randomData.resize(writeSize);
                 std::generate(randomData.begin(), randomData.end(), [&](){ return static_cast<char>(dist(gen)); });
 #else
@@ -1060,7 +1061,7 @@ int overwriteWithRandomData(std::string filePath, std::fstream& file, std::uintm
 #endif
             } catch (...) {
                 logMessage(ERROR, "An unknown error occurred when generating secure random data");
-#ifndef OPENSSL_FOUND
+#ifdef NO_OPENSSL
                 randomData.resize(writeSize);
                 std::generate(randomData.begin(), randomData.end(), [&](){ return static_cast<char>(dist(gen)); });
 #else
@@ -1071,7 +1072,7 @@ int overwriteWithRandomData(std::string filePath, std::fstream& file, std::uintm
             if (Config.isVerify()) { if (lastRandomData.size() < offset + writeSize) {lastRandomData.resize(offset + writeSize); } std::copy(randomData.begin(), randomData.end(), lastRandomData.begin() + offset); }
             file.seekp(offset);
             file.write(reinterpret_cast<char*>(randomData.data()), writeSize);
-            if (Config.isInternal()) { logMessage(INTERNAL, "Successfully wrote all DoD passes to block"); }
+            if (Config.isInternal()) { logMessage(INTERNAL, "Successfully wrote all DoW passes to block"); }
         }
     }
     if (Config.isInternal() && !ic.wasBufferPrinted()) { logMessage(INTERNAL, "Blocksize: " + std::to_string(bufferSize)); ic.updateBufferPrintStatus(true); }
@@ -1082,7 +1083,7 @@ int overwriteWithRandomData(std::string filePath, std::fstream& file, std::uintm
 
         std::vector<char> verifyBuffer(bufferSize);
         bool verificationFailedHere = false; // Initializes boolean that determines if file verification failed
-#ifdef OPENSSL_FOUND
+#ifndef NO_OPENSSL
         ret = verifyWithHash(filePath, lastRandomData, pass); // Config.verify hash
         if (ret == 2) { verificationFailedHere = true; } // If failed
         if (ret == 0) { return 0; } // If successful
@@ -1277,9 +1278,9 @@ void help(char* argv[]) { // The print help functon (At bottom due to size and l
     std::cerr << "    " << argv[0] << " is a tool designed to securely overwrite and remove files and directories." << std::endl;
     std::cerr << "    By default, it overwrites the specified files with random data and removes them, ensuring that" << std::endl;
     std::cerr << "    data is unrecoverable. The tool offers various options for customizing the shredding process." << std::endl;
-    std::cerr << "    This tool almost conforms to DoD 5220.22-M when the '--secure' flag is used without the '--no-verify' flag, and" << std::endl;
+    std::cerr << "    This tool almost conforms to DoW 5220.22-M when the '--secure' flag is used without the '--no-verify' flag, and" << std::endl;
     std::cerr << "    this tool does not conform due to the unnecessary complexity (which enhances the security of the shred).\n" << std::endl;
-#ifdef OPENSSL_FOUND
+#ifndef NO_OPENSSL
     std::cerr << "    Since this program was compiled with OpenSSL, the file verification function uses SHA256 hashing," << std::endl;
     std::cerr << "    which is more efficient, secure, and accurate for file shredding confirmation.\n" << std::endl;
 #endif
