@@ -193,8 +193,10 @@ private:
     friend bool shredFile(const fs::path& filePath);
     friend int overwriteWithRandomData(std::string filePath, std::fstream& file, std::uintmax_t fileSize, int pass);
 
-    bool bufferSizePrinted{false}; // boolean to indicate if the buffer size was already printed
-    bool wasFailedToUrandomPrinted{false}; // boolean to indicate if failure to open urandom was already printed
+    bool bufferSizePrinted{false}; // boolean to indicate if the buffer size was already printed to the user
+    bool wasFailedToUrandomPrinted{false}; // boolean to represent if the indication of the failure to open urandom was already issued to the user
+
+    // wrapper functions to update booleans conforming to rest of program (makes it more readable)
     void updateBufferPrintStatus(bool value) {bufferSizePrinted = value;}
     void updateFailedUrandomStatus(bool value) {wasFailedToUrandomPrinted = value;}
 public:
@@ -207,7 +209,8 @@ struct pgrm {
 private:
     bool isProgramError{false};
 public:
-    void updateErrorStatus() {isProgramError = true;}
+    // globally, this variable is read-only and can only be updated to true (but not reverted)
+    void updateErrorStatus() {isProgramError = true;} // one-way update to prevent resets
     const bool& isError() const {return isProgramError;}
 };
 
@@ -252,8 +255,10 @@ private:
 
     void reseedIfNecessary() {
         auto now = std::chrono::steady_clock::now();
+
+        // reseed RNG every method call (given at least 3 seconds have elapsed)
         if (std::chrono::duration_cast<std::chrono::seconds>(now - lastSeedTime).count() >= 3) {
-            gen.seed(rd());
+            gen.seed(rd()); // initialize mersenne twister engine for non-openssl RNG
             lastSeedTime = now;
         }
     }
@@ -263,7 +268,7 @@ public:
 
     std::mt19937& getGenerator() {
         reseedIfNecessary();
-        return gen;
+        return gen; // return mersenne twister generator (reseeding if more than 3 seconds since last call)
     }
 
     std::random_device& getDevice() {
@@ -274,7 +279,7 @@ public:
 #ifndef NO_OPENSSL
 class secureRandomizer {
 private:
-    std::chrono::steady_clock::time_point lastSeedTime;
+    //std::chrono::steady_clock::time_point lastSeedTime; // openssl entropy managed externally
 
     // Generate cryptographically secure random bytes
     std::vector<unsigned char> generateRandomBytes(size_t size) {
@@ -286,25 +291,27 @@ private:
     }
 
 public:
-    secureRandomizer() : lastSeedTime(std::chrono::steady_clock::now()) {}
+    // initializer not required, time point variable not needed
+    //secureRandomizer() : lastSeedTime(std::chrono::steady_clock::now()) {}
 
     // Re-seeding isn't explicitly needed with OpenSSL RAND_bytes, but this function is desirable in case this implementation fails
-    std::vector<unsigned char> reseedIfNecessary(const size_t& size) {
+    std::vector<unsigned char> reseedIfNecessary(const size_t& size) { // name is consistent with non-openssl function (for maintainability)
+        /* // OpenSSL automatically handles reseeding of its entropy pool.
         auto now = std::chrono::steady_clock::now();
         if (std::chrono::duration_cast<std::chrono::seconds>(now - lastSeedTime).count() >= 3) {
-            // OpenSSL automatically handles reseeding of its entropy pool.
             lastSeedTime = now;
         }
-        return generateRandomBytes(size);
+        */
+        return generateRandomBytes(size); // effectively a wrapper to return the entropy
     }
 };
 #endif
 
 // Declares structures in global scope so all functions reference the same structure
-config Config;
-wPerm wc;
-internal ic;
-pgrm Program;
+config Config; // stores flags set on the program (to change behavior)
+wPerm wc; // wc == "write configuration"
+internal ic; // ic == "internal configuration"
+pgrm Program; // stores whether an error has occured (non-reversible)
 
 std::mutex fileMutex; // Defines file name generation lock
 
@@ -359,7 +366,7 @@ bool isRegularFile(const fs::path& file) { return fs::is_regular_file(file); } /
 
 int main(int argc, char* argv[]) {
     std::vector<std::string> fileArgs{parseArguments(argc, argv)}; // Initialize vector with arguments
-    if (Config.isInternal()) { // Funny extra feature for people in the know about this flag (outputs parameters, files, and a confirmation)
+    if (Config.isInternal()) { // "Funny" extra feature for people in the know about this flag (outputs parameters, files, and a confirmation)
         // Sets flags to strings for readability
         std::string recursiveStr{Config.isRecursive() ? "true" : "false"};
         std::string keep_filesStr{Config.isKeep_files() ? "true" : "false"};
@@ -477,7 +484,11 @@ std::vector<std::string> parseArguments(int argc, char* argv[]) {
         {"dry", [&]() { Config.updateFlag("dry_run", true); }},
         {"no-verify", [&]() { Config.updateFlag("verify", false); }},
         {"force", [&]() { Config.updateFlag("force_delete", true); }},
+#ifndef _WIN32
         {"internal", [&]() { Config.updateFlag("internal", true); }},
+#else
+        {"internal", [&]() { std::cerr << "internal flag doesn't work on windows" << std::endl; }},
+#endif
         {"version", [&]() { version(argv); }},
         {"copyright", [&]() { copyright(argv); }},
     };
