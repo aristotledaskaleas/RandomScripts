@@ -17,8 +17,8 @@
 */
 /*
 File and Directory Shredder
-Version: 10.7d
-Author: Aristotle Daskaleas (2025)
+Version: 10.7e
+Author: Aristotle Daskaleas (2026)
 Changelog (since v10):
     -> As of version 10, format of version is now XX.Xx where X ~ [0-9] and x ~ [a-z]
     -> Added a couple more comments and squashed a bug pertaining to the new uniform initializaion
@@ -115,7 +115,7 @@ const char CW_YEAR[]{"2026"}; // Define copyright year for later use
 #include <openssl/rand.h> // For secure random data generation
 const bool isOpenSSL{true}; // Boolean to determine if OpenSSL is enabled
 #else
-const bool isOpenSSL{false}; // Boolean to determine if OpenSSL is enabled
+const bool isOpenSSL{false}; // Boolean to determine if OpenSSL is disabled
 #endif
 
 namespace fs = std::filesystem; // Makes linking commands from the 'std::filesystem' easier
