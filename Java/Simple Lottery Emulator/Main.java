@@ -1,6 +1,6 @@
 /*
 	Aristotle Daskaleas - 2026
-	2-number lottery game.
+	2-number (trivial/simple) lottery game.
 
 	This is a game of chance where the user randomly supplies a number to the program.
 	The program generates a random number in the same range as the user-requested number.
