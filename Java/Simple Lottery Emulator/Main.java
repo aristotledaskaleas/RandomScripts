@@ -15,6 +15,7 @@ import java.util.*;
 public class Main {
 	// final - constant & static - can be used in class (not instance var)
 	final static boolean IS_TEST_MODE = false; // always set to false in production
+	final static String DBG_MSG = "[DEBUG]"; // this string will prepend lines enabled with IS_TEST_MODE = true;
 
 	public static void main(String[] args) {
 		lottery(); // call the main program
@@ -44,33 +45,38 @@ public class Main {
 		int y; // initialize integer to store user input
 
 		if (IS_TEST_MODE) { // simple print statement that exposes the generated number for testing program logic
-			System.out.printf("System: %d\n", x);
+			System.out.printf("%s System: %d\n", DBG_MSG, x);
 		}
 
 		while (true) {
 			System.out.print("Please enter a number (10-99): ");
 
-			y = input.nextInt(); // get user input
-			System.out.println(); // formatting
-
-			input.nextLine(); // advance cursor in input buffer
-
 			try {
+				y = input.nextInt(); // get user input
+
+				input.nextLine(); // advance cursor in input buffer
+
 				if (y >= 10 && y <= 99) { // base case: y is in the requested range
+					System.out.println(); // formatting
 					input.close(); // prevent resource leakage
 					break;
 				}
 				else if (y < 10 || y > 99) { // try again, hint the user as to what went wrong
-					System.err.println("out of range");
+					System.err.println("out of range\n");
 					continue;
 				}
 			} catch (InputMismatchException e) { // if they decided to enter a non-integer
-				System.err.println("expected an integer");
+				input.nextLine(); // move past invalid input to prevent infinite loop
+
+				System.err.println("expected an integer\n");
 				continue;
 			}
 
 			System.err.println("bad input"); // an unknown error occurred, try again.
 		}
+
+		// print to user randomly generated number (so they don't think they're being cheated)
+		System.out.printf("System: %d, User: %d\n", x, y);
 		
 		if (x == y) { // numbers are an exact match
 			System.out.println("Congratulations! You win $10,000!");
