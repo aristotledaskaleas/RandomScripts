@@ -1,0 +1,3 @@
+The "placeholder" folder will be deleted once I have a new project to put in its place.
+I did not like the way github formatted the Java directory when it only had one subdirectory.
+Please ignore.
