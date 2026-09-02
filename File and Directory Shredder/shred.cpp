@@ -275,8 +275,7 @@ public:
         return rd;
     }
 };
-#endif
-#ifndef NO_OPENSSL
+#else
 class secureRandomizer {
 private:
     //std::chrono::steady_clock::time_point lastSeedTime; // openssl entropy managed externally
@@ -340,32 +339,43 @@ enum logLevel { // Define valid log levels
     hashStat hash;
 #endif
 
-void help(char* argv[]);
-void shortHelp(char* argv[]);
-void copyright(char* argv[]);
-void version(char* argv[]);
+//
+// Declare prototypes for all functions in the program (quick reference and intermingled use)
+//
 
+// quick helper functions for outputting program information
+void help(char* argv[]); // full help menu
+void shortHelp(char* argv[]); // abbreviated help menu
+void copyright(char* argv[]); // my gloating teehee
+void version(char* argv[]); // what do you think this function prints?
+
+// main wrapper function that's called simply with a file name
+bool shredFile(const fs::path& filePath);
+
+// main function that generates random data and overwrites file data
 int overwriteWithRandomData(std::string filePath, std::fstream& file, std::uintmax_t fileSize, int pass = 1);
 
-bool shredFile(const fs::path& filePath);
+// permission functions ensure the files have write permission (or attempts to rectify that) before attempting overwrite
 bool changePermissions(const std::string &filePath);
 int hasWritePermission(const fs::path& path);
 
+// maintenance functions
+void processPath(const fs::path& path); // resolve links
+void syncFile(const fs::path& filePath); // force filesystem to sync new file data before unlinking
+void cleanupMetadata(std::string& filePath); // attempt to remove any remnants of the shredded file
 
-void processPath(const fs::path& path);
-void syncFile(const fs::path& filePath);
+// logging utility and custom exit handler
 void logMessage(logLevel type, const std::string& message);
 void errorExit(int value = 1, std::string message = "", std::string flag = "", bool customLogger = false);
-void cleanupMetadata(std::string& filePath);
 
-std::vector<std::string> parseArguments(int argc, char* argv[]);
-std::uintmax_t getOptimalBlockSize();
-std::string generateRandomFileName(size_t length = 32);
+std::vector<std::string> parseArguments(int argc, char* argv[]); // sets any applicable program settings (from command line arguments)
+std::uintmax_t getOptimalBlockSize(); // retrieves most optimal size of random data to write at a time
+std::string generateRandomFileName(size_t length = 32); // change file name before unlinking for added security
 
-bool isRegularFile(const fs::path& file) { return fs::is_regular_file(file); } // Function to check if a path is a regular file
+bool isRegularFile(const fs::path& file) { return fs::is_regular_file(file); } // Function to check if a path is a regular file (e.g., not symlink)
 
 int main(int argc, char* argv[]) {
-    std::vector<std::string> fileArgs{parseArguments(argc, argv)}; // Initialize vector with arguments
+    std::vector<std::string> fileArgs{parseArguments(argc, argv)}; // Initialize vector with arguments AND update program config structures via the arguments command
     if (Config.isInternal()) { // "Funny" extra feature for people in the know about this flag (outputs parameters, files, and a confirmation)
         // Sets flags to strings for readability
         std::string recursiveStr{Config.isRecursive() ? "true" : "false"};
@@ -423,12 +433,14 @@ int main(int argc, char* argv[]) {
 
 std::vector<std::string> parseArguments(int argc, char* argv[]) {
     std::vector<std::string> fileArgs; // Store file paths
+
+    // pre-defines error messages
     std::string nfMsg{"Flag '-n' requires a positive integer"};
     std::string nlMsg{"Flag '--number' requires a positive integer"};
     
     int i{};
 
-    // Define short flag handlers
+    // Define short flag handlers [for later checking]
     std::unordered_map<char, std::function<void(size_t&, const std::string&)>> shortFlagActions{
         {'h', [&](size_t&, const std::string&) { shortHelp(argv); }},
         {'H', [&](size_t&, const std::string&) { help(argv); }},
@@ -529,12 +541,12 @@ std::vector<std::string> parseArguments(int argc, char* argv[]) {
         errorExit(1, "Incorrect usage. Use '-h' or '--help' for help");
     }
 
-    return fileArgs;
+    return fileArgs; // return all arguments after parsing
 }
 
 void processPath(const fs::path& path) {
     try {
-        if (fs::is_symlink(path) && !Config.isFollow_symlinks()) { // Skip symlinks
+        if (fs::is_symlink(path) && !Config.isFollow_symlinks()) { // Skip symlinks if not configured to follow
             logMessage(WARNING, "Skipping symlink '" + path.string() + "'");
             return;
         } else if (fs::is_symlink(path) && Config.isFollow_symlinks()) {
