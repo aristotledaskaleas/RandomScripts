@@ -9,13 +9,21 @@
 	If one number is correct, and in the correct place, the third prize is won.
 	If one number is correct, but in the incorrect place, the fourth prize is won.
 	Otherwise, it's a loss.
+
+	If IS_TEST_MODE = true, then useful debugging statements (currently only one - 9/3) will run.
+	This includes printing the randomly generated number before the program asks the user for another one.
+	This ensures the branches run properly (checking lottery winning logic).
+
+	The variable DBG_MSG sets what to prepend every debugging test statement with (for clarity in output),
+	set to blank to hide from the output which statements are part of debugging (not recommended).
 */
 import java.util.*;
 
 public class Main {
 	// final - constant & static - can be used in class (not instance var)
 	final static boolean IS_TEST_MODE = false; // always set to false in production
-	final static String DBG_MSG = "[DEBUG]"; // this string will prepend lines enabled with IS_TEST_MODE = true;
+	final static String DBG_MSG = "[DEBUG] "; // this string will prepend lines enabled with IS_TEST_MODE = true;
+											  // ensure this string ends with a space unless you do not want to separate this string from the message (not recommended)
 
 	public static void main(String[] args) {
 		lottery(); // call the main program
@@ -45,7 +53,7 @@ public class Main {
 		int y; // initialize integer to store user input
 
 		if (IS_TEST_MODE) { // simple print statement that exposes the generated number for testing program logic
-			System.out.printf("%s System: %d\n", DBG_MSG, x);
+			System.out.printf("%sSystem:%d\n", DBG_MSG, x);
 		}
 
 		while (true) {
