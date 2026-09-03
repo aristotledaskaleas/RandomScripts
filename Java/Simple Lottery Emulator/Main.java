@@ -53,7 +53,7 @@ public class Main {
 		int y; // initialize integer to store user input
 
 		if (IS_TEST_MODE) { // simple print statement that exposes the generated number for testing program logic
-			System.out.printf("%sSystem:%d\n", DBG_MSG, x);
+			System.out.printf("%sSystem: %d\n", DBG_MSG, x);
 		}
 
 		while (true) {
